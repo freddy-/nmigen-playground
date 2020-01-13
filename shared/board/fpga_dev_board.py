@@ -23,6 +23,16 @@ class FpgaDevBoard(XilinxSpartan6Platform):
 
         *ButtonResources(pins="P97 P99 P101 P104",
                          attrs=Attrs(IOSTANDARD="LVCMOS33")),
+
+        Display7SegResource(0,
+                            a="P88", b="P114", c="P116", d="P111",
+                            e="P105", f="P102", g="P100", dp="P98",
+                            invert=True, attrs=Attrs(IOSTANDARD="LVTTL")
+                            ),
+        Resource("display_7seg_ctrl", 0,
+                 Subsignal("en", Pins("P118 P117 P115 P112", dir="o", invert=True)),
+                 Attrs(IOSTANDARD="LVTTL")
+                 ),
     ]
     connectors = []
 

@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 from nmigen import *
-from board.fpga_dev_board import FpgaDevBoard
+from shared.board.fpga_dev_board import FpgaDevBoard
 from nmigen.back.pysim import Simulator, Delay
 
 
