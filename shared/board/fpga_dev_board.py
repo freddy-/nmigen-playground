@@ -29,10 +29,17 @@ class FpgaDevBoard(XilinxSpartan6Platform):
                             e="P105", f="P102", g="P100", dp="P98",
                             invert=True, attrs=Attrs(IOSTANDARD="LVTTL")
                             ),
+
         Resource("display_7seg_ctrl", 0,
                  Subsignal("en", Pins("P118 P117 P115 P112", dir="o", invert=True)),
-                 Attrs(IOSTANDARD="LVTTL")
+                 Attrs(IOSTANDARD="LVCMOS33")
                  ),
+        
+        Resource("uart", 0,
+            Subsignal("tx", Pins("P93", dir="o")),
+            Subsignal("rx",  Pins("P87", dir="i")),
+            Attrs(IOSTANDARD="LVCMOS33")
+        )
     ]
     connectors = []
 
