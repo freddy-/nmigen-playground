@@ -5,18 +5,6 @@ from shared.board.fpga_dev_board import FpgaDevBoard
 from shared.clockDiv import ClockDivWE
 from nmigen.back.pysim import Simulator, Delay
 
-# i_clk
-# i_wr
-# i_data
-# o_busy
-# o_tx
-
-
-# quando i_wr && (!o_busy)
-#   copia i_data pra um registrador local
-#   seta o_busy pra true
-#   seta o_tx pra false
-
 
 class UartTX(Elaboratable):
     def __init__(self):
@@ -28,8 +16,7 @@ class UartTX(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
-        # TODO calcular para o baud rate correto 115200
-        clkDiv = ClockDivWE(divideBy=256)
+        clkDiv = ClockDivWE(targetFreq=115200)
         m.submodules += clkDiv
 
         busy = Signal()
@@ -83,7 +70,7 @@ class UartLed(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
-        m.submodules.clkDiv = clkDiv = ClockDivWE(divideBy=294980)
+        m.submodules.clkDiv = clkDiv = ClockDivWE(targetFreq=100)
 
         with m.If(~self.i_signal):
             m.d.sync += [
@@ -101,33 +88,59 @@ class UartLed(Elaboratable):
 
 
 class Main(Elaboratable):
-    def __init__(self, platform):
-        self.o_tx = platform.request('uart').tx
-        self.o_txLed = platform.request('led', 0)
+    def __init__(self, platform=None):
+        if (platform != None):
+            self.o_tx = platform.request('uart').tx
+            self.o_txLed = platform.request('led', 0)
+        else:
+            self.o_tx = Signal()
+            self.o_txLed = Signal()
 
     def elaborate(self, platform):
         m = Module()
 
         m.submodules.uartTx = uartTx = UartTX()
         m.submodules.txLed = txLed = UartLed()
-        m.submodules.clkDiv = clkDiv = ClockDivWE(divideBy=14749000) # ~500ms
+        m.submodules.clkDiv = clkDiv = ClockDivWE(targetFreq=1)
 
         m.d.comb += [
-            clkDiv.i_enable.eq(1),
-
             self.o_tx.eq(uartTx.o_tx),
-
             txLed.i_signal.eq(uartTx.o_tx),
             self.o_txLed.eq(txLed.o_led)
         ]
 
-        with m.If((clkDiv.o_clk) & (~uartTx.o_busy)):
+        charCounter = Signal(max=20)
+        helloString = Array([
+            ord('H'),
+            ord('e'),
+            ord('l'),
+            ord('l'),
+            ord('o'),
+            ord(' '),
+            ord('W'),
+            ord('o'),
+            ord('r'),
+            ord('l'),
+            ord('d'),
+            ord('!'),
+            ord(' ')
+        ])
+
+        with m.If((~uartTx.o_busy) & (~uartTx.i_wr) & (charCounter <= 12)):
             m.d.sync += [
-                uartTx.i_data.eq(ord('X')),
-                uartTx.i_wr.eq(1)
+                uartTx.i_data.eq(helloString[charCounter]),
+                uartTx.i_wr.eq(1),
+                charCounter.eq(charCounter + 1)
+            ]
+        with m.Elif(uartTx.o_busy):
+            m.d.sync += uartTx.i_wr.eq(0)
+        with m.Elif(clkDiv.o_clk):
+            m.d.sync += [
+                clkDiv.i_enable.eq(0),
+                charCounter.eq(0)
             ]
         with m.Else():
-            m.d.sync += uartTx.i_wr.eq(0)
+            m.d.sync += clkDiv.i_enable.eq(1)
 
         return m
 
@@ -162,29 +175,14 @@ if __name__ == "__main__":
                            program_opts={"flash": False})
 
     elif args.action == 'simulate':
-        main = UartTX()
+        main = Main()
         m = Module()
-        i_wr = Signal()
-        i_data = Signal(8)
         m.submodules.main = main
-        m.d.sync += main.i_wr.eq(i_wr)
-        m.d.sync += main.i_data.eq(i_data)
 
         sim = Simulator(m)
         sim.add_clock(1e-6)
 
         def process():
-            yield Delay(5e-6)
-            yield i_wr.eq(1)
-            yield i_data.eq(0b11100101)
-            yield Delay(1e-6)
-            yield i_wr.eq(0)
-            yield Delay(4e-3)
-
-            yield i_wr.eq(1)
-            yield i_data.eq(0b01010101)
-            yield Delay(1e-6)
-            yield i_wr.eq(0)
             yield Delay(4e-3)
 
         sim.add_sync_process(process)

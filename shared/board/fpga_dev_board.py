@@ -48,7 +48,7 @@ class FpgaDevBoard(XilinxSpartan6Platform):
         with products.extract("{}.bit".format(name)) as bitstream_filename:
             if options.get("flash"):
                 subprocess.run(
-                    [fpgaprog, "-v", "-f", bitstream_filename, "-b", "bscan_spi_lx9.bit", "-sa", "-r"], check=True)
+                    [fpgaprog, "-v", "-f", bitstream_filename, "-b", "shared/board/bscan_spi_lx9.bit", "-sa", "-r"], check=True)
             else:
                 subprocess.run(
                     [fpgaprog, "-v", "-f", bitstream_filename], check=True)
