@@ -21,7 +21,7 @@ class ClockDiv(Elaboratable):
 
 
 class ClockDivWE(Elaboratable):
-    def __init__(self, divideBy=1, targetFreq=None):
+    def __init__(self, divideBy=10, targetFreq=None):
         self.o_clk = Signal()
         self.i_enable = Signal()
         self.divideBy = divideBy
