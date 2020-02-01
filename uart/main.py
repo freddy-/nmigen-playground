@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 
 from nmigen import *
+from nmigen.lib.cdc import FFSynchronizer
 from shared.board.fpga_dev_board import FpgaDevBoard
 from shared.clockDiv import ClockDivWE
 from nmigen.back.pysim import Simulator, Delay
@@ -19,11 +20,8 @@ class UartRx(Elaboratable):
         bitCounter = Signal(max=10)
         buffer = Signal(8)
 
-        rxSynced = Signal(2, reset=0b11)
-        m.d.sync += [
-            rxSynced[1].eq(rxSynced[0]),
-            rxSynced[0].eq(self.i_rx)
-        ]
+        rx = Signal(reset=1)
+        m.submodules += FFSynchronizer(self.i_rx, rx, reset=1)
 
         clkDiv = ClockDivWE(targetFreq=115200 * 2)
         m.submodules += clkDiv
@@ -34,7 +32,7 @@ class UartRx(Elaboratable):
         with m.FSM():
             with m.State('IDLE'):
                 m.d.sync += self.o_stb.eq(0)
-                with m.If(~rxSynced[1]):
+                with m.If(~rx):
                     m.d.sync += clkDiv.i_enable.eq(1)
                     m.next = 'WAIT_HALF_BAUD'
 
@@ -47,7 +45,7 @@ class UartRx(Elaboratable):
                 with m.If(baudCounter == 2):
                     with m.If(bitCounter < 8):
                         m.d.sync += [
-                            buffer.eq(Cat(buffer[1:], rxSynced[1])),
+                            buffer.eq(Cat(buffer[1:], rx)),
                             bitCounter.eq(bitCounter + 1),
                             baudCounter.eq(0)
                         ]
